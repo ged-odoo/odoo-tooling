@@ -20,13 +20,22 @@ def color(string: str, col: str) -> str:
     return f"\033[{COLOR_MAP[col]}m{string}\033[00m"
 
 
-def _run_command(command, cwd):
+def _run_command(command, cwd="./"):
     return (
         subprocess.run(command, cwd=cwd, capture_output=True, check=True)
         .stdout.decode()
         .rstrip("\n")
     )
 
+def get_db_version():
+    query = "SELECT latest_version FROM ir_module_module WHERE name='base'"
+    try:
+        psql_result = _run_command(["psql", "testdb", "-c", query])
+        result_line = psql_result.split()[2]
+        db_version = '.'.join(result_line.split('.')[:2])
+        return db_version
+    except:
+        return '?'
 
 def read_git_branch(cwd: str, with_status=False) -> str:
     """
@@ -55,6 +64,7 @@ def show_status():
     community_branch = read_git_branch("community", with_status=True)
     enterprise_branch = read_git_branch("enterprise", with_status=True)
     print("{:<18} {}".format("Odoo server:", release.version))
+    print("{:<18} {}".format("testdb version:", get_db_version()))
     print("{:<18} {}".format("Community branch:", community_branch))
     print("{:<18} {}".format("Enterprise branch:", enterprise_branch))
 
