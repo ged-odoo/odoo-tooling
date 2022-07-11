@@ -34,7 +34,7 @@ def read_git_branch(cwd: str, with_status=False) -> str:
     """
     branch_name = _run_command(["git", "branch", "--show-current"], cwd)
     if with_status:
-        is_dirty = _run_command(["git", "status", "--porcelain"], cwd) == ""
+        is_dirty = _run_command(["git", "status", "--porcelain"], cwd) != ""
         if is_dirty:
             branch_name = branch_name + " (*)"
 
