@@ -129,8 +129,8 @@ def main():
                 "!=",
                 color(enterprise_branch, "cyan"),
             )
-            should_continue = input("do you want to continue? (y/N) ") == "y"
-            if not should_continue:
+            should_stop = input("do you want to continue? (Y/n) ") == "n"
+            if should_stop:
                 quit()
 
     # Step 3: another check: error if db does not match enterprise config
