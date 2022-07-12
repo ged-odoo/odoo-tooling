@@ -27,15 +27,21 @@ def _run_command(command, cwd="./"):
         .rstrip("\n")
     )
 
+
 def get_db_version():
-    query = "SELECT latest_version FROM ir_module_module WHERE name='base'"
+    run_query = lambda q: _run_command((["psql", DB_NAME, "-c", q]))
+    version_query = "SELECT latest_version FROM ir_module_module WHERE name='base'"
+    enterprise_query = "SELECT license from ir_module_module where name='web_enterprise' and state='installed'"
     try:
-        psql_result = _run_command(["psql", DB_NAME, "-c", query])
-        result_line = psql_result.split()[2]
-        db_version = '.'.join(result_line.split('.')[:2])
+        result_line = run_query(version_query).split()[2]
+        db_version = ".".join(result_line.split(".")[:2])
+        is_enterprise = "1 row" in run_query(enterprise_query)
+        if is_enterprise:
+            db_version = db_version + " (enterprise)"
         return db_version
     except:
-        return '?'
+        return "?"
+
 
 def read_git_branch(cwd: str, with_status=False) -> str:
     """
@@ -127,7 +133,18 @@ def main():
             if not should_continue:
                 quit()
 
-    # Step 3: start odoo server
+    # Step 3: another check: error if db does not match enterprise config
+    is_db_enterprise = "enterprise" in get_db_version()
+    if not config.drop_db and is_db_enterprise != config.enterprise:
+        msg = (
+            "Error: no enterprise addons requested, but current db is enterprise"
+            if is_db_enterprise
+            else "Error: enterprise addons requested, but current db is not enterprise"
+        )
+        print(color(msg, "red"))
+        quit()
+
+    # Step 4: start odoo server
     addons_path = "addons,../enterprise" if config.enterprise else "addons"
     base_args = f"-r {DB_USER} -w {DB_PASSWORD} -d {DB_NAME} --db-filter={DB_NAME} --dev=all --addons-path {addons_path} "
 
