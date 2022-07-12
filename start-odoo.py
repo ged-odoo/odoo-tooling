@@ -30,7 +30,7 @@ def _run_command(command, cwd="./"):
 def get_db_version():
     query = "SELECT latest_version FROM ir_module_module WHERE name='base'"
     try:
-        psql_result = _run_command(["psql", "testdb", "-c", query])
+        psql_result = _run_command(["psql", DB_NAME, "-c", query])
         result_line = psql_result.split()[2]
         db_version = '.'.join(result_line.split('.')[:2])
         return db_version
@@ -64,7 +64,7 @@ def show_status():
     community_branch = read_git_branch("community", with_status=True)
     enterprise_branch = read_git_branch("enterprise", with_status=True)
     print("{:<18} {}".format("Odoo server:", release.version))
-    print("{:<18} {}".format("testdb version:", get_db_version()))
+    print("{:<18} {}".format(f"{DB_NAME} version:", get_db_version()))
     print("{:<18} {}".format("Community branch:", community_branch))
     print("{:<18} {}".format("Enterprise branch:", enterprise_branch))
 
@@ -89,6 +89,7 @@ def main():
         "-e", "--enterprise", help="activate enterprise addons", action="store_true"
     )
     parser.add_argument("-t", "--test", help="run tests", action="store_true")
+    parser.add_argument("-d", "--drop-db", help="drop test db", action="store_true")
     parser.add_argument(
         "-w", "--web", help="run web test suite (implies --test)", action="store_true"
     )
@@ -105,6 +106,9 @@ def main():
     if config.status:
         show_status()
         quit()
+
+    if config.drop_db:
+        _run_command(["dropdb", DB_NAME])
 
     # Step 2: sanity check: do enterprise and community branch match?
     if config.enterprise:
