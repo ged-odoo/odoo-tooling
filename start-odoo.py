@@ -75,6 +75,44 @@ def show_status():
     print("{:<18} {}".format("Enterprise branch:", enterprise_branch))
 
 
+def branch_cleaner():
+    # step 1: collecting branches information
+    branches = {}
+    for branch in _run_command(["git", "branch"], "community").split("\n"):
+        active = "* " in branch
+        branch = branch[2:].strip()
+        branches[branch] = {"active": active, "repo": ["community"]}
+    for branch in _run_command(["git", "branch"], "enterprise").split("\n"):
+        active = "* " in branch
+        branch = branch[2:].strip()
+        if branch in branches:
+            descr = branches[branch]
+            descr["active"] = descr["active"] or active
+            descr["repo"].append("enterprise")
+        else:
+            branches[branch] = {"active": active, "repo": ["enterprise"]}
+
+    # step 2: iterating and removing branches
+
+    print("Branch cleaner tool")
+    print("-------------------")
+    print(f"Found {len(branches.keys())} branches\n")
+    for branch, descr in branches.items():
+        color_branch_name = color(branch, "cyan")
+        if descr["active"]:
+            print(f"skipping '{color_branch_name}' (currently in use)")
+        else:
+            should_remove = (
+                input(
+                    f"remove '{color_branch_name}' ({', '.join(descr['repo'])})? (y/N) "
+                )
+                == "y"
+            )
+            if should_remove:
+                for repo in descr["repo"]:
+                    print(_run_command(["git", "branch", "-D", branch], repo))
+
+
 # ------------------------------------------------------------------------------
 # Main
 # ------------------------------------------------------------------------------
@@ -97,6 +135,9 @@ def main():
     parser.add_argument("-t", "--test", help="run tests", action="store_true")
     parser.add_argument("-d", "--drop-db", help="drop test db", action="store_true")
     parser.add_argument(
+        "--clean-branches", help="helper to clean all git branches", action="store_true"
+    )
+    parser.add_argument(
         "-w", "--web", help="run web test suite (implies --test)", action="store_true"
     )
     parser.add_argument(
@@ -106,15 +147,20 @@ def main():
         action="store_true",
     )
     config = parser.parse_args(args)
-    if config.web:
-        config.test = True
 
     if config.status:
         show_status()
         quit()
 
+    if config.clean_branches:
+        branch_cleaner()
+        quit()
+
     if config.drop_db:
         _run_command(["dropdb", DB_NAME])
+
+    if config.web:
+        config.test = True
 
     # Step 2: sanity check: do enterprise and community branch match?
     if config.enterprise:
