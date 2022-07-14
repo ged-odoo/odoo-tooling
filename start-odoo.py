@@ -75,13 +75,12 @@ def show_status():
     print("{:<18} {}".format("Enterprise branch:", enterprise_branch))
 
 
-def branch_cleaner():
-    # step 1: collecting branches information
+def get_git_branches():
     branches = {}
     for branch in _run_command(["git", "branch"], "community").split("\n"):
         active = "* " in branch
         branch = branch[2:].strip()
-        branches[branch] = {"active": active, "repo": ["community"]}
+        branches[branch] = {"active": active, "com": active, "repo": ["community"]}
     for branch in _run_command(["git", "branch"], "enterprise").split("\n"):
         active = "* " in branch
         branch = branch[2:].strip()
@@ -91,9 +90,12 @@ def branch_cleaner():
             descr["repo"].append("enterprise")
         else:
             branches[branch] = {"active": active, "repo": ["enterprise"]}
+        branches[branch]["ent"] = active
+    return branches
 
-    # step 2: iterating and removing branches
 
+def branch_cleaner():
+    branches = get_git_branches()
     print("Branch cleaner tool")
     print("-------------------")
     print(f"Found {len(branches.keys())} branches\n")
@@ -111,6 +113,22 @@ def branch_cleaner():
             if should_remove:
                 for repo in descr["repo"]:
                     print(_run_command(["git", "branch", "-D", branch], repo))
+
+
+def get_branch_status(descr):
+    com = ("X" if "community" in descr["repo"] else " ") + (
+        "*" if descr["com"] else " "
+    )
+    ent = ("X" if "enterprise" in descr["repo"] else " ") + (
+        "*" if descr["ent"] else " "
+    )
+    return com + " " + ent
+
+
+def show_branches():
+    branches = get_git_branches()
+    for branch, descr in branches.items():
+        print(f"{get_branch_status((descr))} | {branch}")
 
 
 # ------------------------------------------------------------------------------
@@ -138,6 +156,9 @@ def main():
         "--clean-branches", help="helper to clean all git branches", action="store_true"
     )
     parser.add_argument(
+        "-l", "--list-branches", help="list all git branches", action="store_true"
+    )
+    parser.add_argument(
         "-w", "--web", help="run web test suite (implies --test)", action="store_true"
     )
     parser.add_argument(
@@ -154,6 +175,10 @@ def main():
 
     if config.clean_branches:
         branch_cleaner()
+        quit()
+
+    if config.list_branches:
+        show_branches()
         quit()
 
     if config.drop_db:
