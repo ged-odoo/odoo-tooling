@@ -177,7 +177,7 @@ def parse_args():
         "-l", "--list-branches", help="list all git branches", action="store_true"
     )
     parser.add_argument(
-        "-w", "--web", help="run web test suite (implies --test)", action="store_true"
+        "-w", "--test-web", help="run web test suite (implies --test)", action="store_true"
     )
     parser.add_argument(
         "-s",
@@ -206,7 +206,7 @@ def main():
     if config.drop_db:
         run_command(["dropdb", DB_NAME])
 
-    if config.web:
+    if config.test_web:
         config.test = True
 
     # sanity check: do enterprise and community branch match?
@@ -243,7 +243,7 @@ def main():
 
     if config.test:
         test_args = " --test-enable --stop-after-init "
-        if config.web:
+        if config.test_web:
             test_args = test_args + "--test-tags /web:WebSuite "
         start_odoo(base_args + test_args + " ".join(odoo_args))
     else:
