@@ -107,10 +107,10 @@ def branch_cleaner():
 
 def get_branch_status(descr):
     com = ("X" if "community" in descr["repo"] else " ") + (
-        "*" if descr["com"] else " "
+        "*" if descr.get("com") else " "
     )
     ent = ("X" if "enterprise" in descr["repo"] else " ") + (
-        "*" if descr["ent"] else " "
+        "*" if descr.get("ent") else " "
     )
     return com + " " + ent
 
