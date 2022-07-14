@@ -9,6 +9,10 @@ DB_USER = "odoo"
 DB_PASSWORD = "odoo"
 ODOO_BIN_CMD = "source env15/bin/activate;cd community;./odoo-bin"
 
+# ------------------------------------------------------------------------------
+# Misc Helpers
+# ------------------------------------------------------------------------------
+
 # https://www.geeksforgeeks.org/print-colors-python-terminal/
 COLOR_MAP = {"red": 91, "cyan": 96, "yellow": 93}
 
@@ -20,7 +24,7 @@ def color(string: str, col: str) -> str:
     return f"\033[{COLOR_MAP[col]}m{string}\033[00m"
 
 
-def _run_command(command, cwd="./"):
+def run_command(command, cwd="./"):
     return (
         subprocess.run(command, cwd=cwd, capture_output=True, check=True)
         .stdout.decode()
@@ -28,8 +32,21 @@ def _run_command(command, cwd="./"):
     )
 
 
+def read_git_branch(cwd: str, with_status=False) -> str:
+    """
+    Return current git branch in working directory
+    """
+    branch_name = run_command(["git", "branch", "--show-current"], cwd)
+    if with_status:
+        is_dirty = run_command(["git", "status", "--porcelain"], cwd) != ""
+        if is_dirty:
+            branch_name = branch_name + " (*)"
+
+    return branch_name
+
+
 def get_db_version():
-    run_query = lambda q: _run_command((["psql", DB_NAME, "-c", q]))
+    run_query = lambda q: run_command((["psql", DB_NAME, "-c", q]))
     version_query = "SELECT latest_version FROM ir_module_module WHERE name='base'"
     enterprise_query = "SELECT license from ir_module_module where name='web_enterprise' and state='installed'"
     try:
@@ -43,45 +60,18 @@ def get_db_version():
         return "?"
 
 
-def read_git_branch(cwd: str, with_status=False) -> str:
-    """
-    Return current git branch in working directory
-    """
-    branch_name = _run_command(["git", "branch", "--show-current"], cwd)
-    if with_status:
-        is_dirty = _run_command(["git", "status", "--porcelain"], cwd) != ""
-        if is_dirty:
-            branch_name = branch_name + " (*)"
-
-    return branch_name
-
-
-def start_odoo(args: str):
-    """
-    start a odoo server with the corresponding addons path and args
-    """
-    subprocess.call(f"{ODOO_BIN_CMD} {args}", shell=True, executable="/bin/bash")
-
-
-def show_status():
-    sys.path.append("community/odoo")
-    import release
-
-    community_branch = read_git_branch("community", with_status=True)
-    enterprise_branch = read_git_branch("enterprise", with_status=True)
-    print("{:<18} {}".format("Odoo server:", release.version))
-    print("{:<18} {}".format(f"{DB_NAME} version:", get_db_version()))
-    print("{:<18} {}".format("Community branch:", community_branch))
-    print("{:<18} {}".format("Enterprise branch:", enterprise_branch))
+# ------------------------------------------------------------------------------
+# Git tooling (clean-branches, list-branches)
+# ------------------------------------------------------------------------------
 
 
 def get_git_branches():
     branches = {}
-    for branch in _run_command(["git", "branch"], "community").split("\n"):
+    for branch in run_command(["git", "branch"], "community").split("\n"):
         active = "* " in branch
         branch = branch[2:].strip()
         branches[branch] = {"active": active, "com": active, "repo": ["community"]}
-    for branch in _run_command(["git", "branch"], "enterprise").split("\n"):
+    for branch in run_command(["git", "branch"], "enterprise").split("\n"):
         active = "* " in branch
         branch = branch[2:].strip()
         if branch in branches:
@@ -112,7 +102,7 @@ def branch_cleaner():
             )
             if should_remove:
                 for repo in descr["repo"]:
-                    print(_run_command(["git", "branch", "-D", branch], repo))
+                    print(run_command(["git", "branch", "-D", branch], repo))
 
 
 def get_branch_status(descr):
@@ -132,12 +122,40 @@ def show_branches():
 
 
 # ------------------------------------------------------------------------------
+# status command
+# ------------------------------------------------------------------------------
+
+
+def show_status():
+    sys.path.append("community/odoo")
+    import release
+
+    community_branch = read_git_branch("community", with_status=True)
+    enterprise_branch = read_git_branch("enterprise", with_status=True)
+    print("{:<18} {}".format("Odoo server:", release.version))
+    print("{:<18} {}".format(f"{DB_NAME} version:", get_db_version()))
+    print("{:<18} {}".format("Community branch:", community_branch))
+    print("{:<18} {}".format("Enterprise branch:", enterprise_branch))
+
+
+# ------------------------------------------------------------------------------
+# Start odoo server
+# ------------------------------------------------------------------------------
+
+
+def start_odoo(args: str):
+    """
+    start a odoo server with the corresponding addons path and args
+    """
+    subprocess.call(f"{ODOO_BIN_CMD} {args}", shell=True, executable="/bin/bash")
+
+
+# ------------------------------------------------------------------------------
 # Main
 # ------------------------------------------------------------------------------
 
 
-def main():
-    # Step 1: processing args
+def parse_args():
     args = sys.argv[1:]
     odoo_args = []
 
@@ -167,7 +185,11 @@ def main():
         help="show Odoo version and current branches",
         action="store_true",
     )
-    config = parser.parse_args(args)
+    return parser.parse_args(args)
+
+
+def main():
+    config = parse_args()
 
     if config.status:
         show_status()
@@ -182,12 +204,12 @@ def main():
         quit()
 
     if config.drop_db:
-        _run_command(["dropdb", DB_NAME])
+        run_command(["dropdb", DB_NAME])
 
     if config.web:
         config.test = True
 
-    # Step 2: sanity check: do enterprise and community branch match?
+    # sanity check: do enterprise and community branch match?
     if config.enterprise:
         community_branch = read_git_branch("community")
         enterprise_branch = read_git_branch("enterprise")
@@ -204,7 +226,7 @@ def main():
             if should_stop:
                 quit()
 
-    # Step 3: another check: error if db does not match enterprise config
+    # another check: error if db does not match enterprise config
     is_db_enterprise = "enterprise" in get_db_version()
     if not config.drop_db and is_db_enterprise != config.enterprise:
         msg = (
@@ -215,7 +237,7 @@ def main():
         print(color(msg, "red"))
         quit()
 
-    # Step 4: start odoo server
+    # start odoo server
     addons_path = "addons,../enterprise" if config.enterprise else "addons"
     base_args = f"-r {DB_USER} -w {DB_PASSWORD} -d {DB_NAME} --db-filter={DB_NAME} --dev=all --addons-path {addons_path} "
 
