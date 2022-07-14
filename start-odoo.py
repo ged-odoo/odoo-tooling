@@ -139,6 +139,16 @@ def show_status():
 
 
 # ------------------------------------------------------------------------------
+# dropdb command
+# ------------------------------------------------------------------------------
+
+def drop_test_db():
+    try:
+        run_command(["dropdb", DB_NAME])
+    except:
+        print(color("warning: failed to drop test db (db probably does not exist", "yellow"))
+
+# ------------------------------------------------------------------------------
 # Start odoo server
 # ------------------------------------------------------------------------------
 
@@ -204,7 +214,7 @@ def main():
         quit()
 
     if config.drop_db:
-        run_command(["dropdb", DB_NAME])
+        drop_test_db()
 
     if config.test_web:
         config.test = True
