@@ -185,11 +185,11 @@ def parse_args():
         help="show Odoo version and current branches",
         action="store_true",
     )
-    return parser.parse_args(args)
+    return (parser.parse_args(args), odoo_args)
 
 
 def main():
-    config = parse_args()
+    config, odoo_args = parse_args()
 
     if config.status:
         show_status()
