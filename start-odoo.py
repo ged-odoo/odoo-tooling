@@ -189,6 +189,7 @@ def parse_args():
     parser.add_argument(
         "-w", "--test-web", help="run web test suite (implies --test)", action="store_true"
     )
+    parser.add_argument("-p", "--additional-path", help="additional addon path")
     parser.add_argument(
         "-s",
         "--status",
@@ -249,6 +250,8 @@ def main():
 
     # start odoo server
     addons_path = "addons,../enterprise" if config.enterprise else "addons"
+    if config.additional_path:
+        addons_path = addons_path + ',' + config.additional_path
     base_args = f"-r {DB_USER} -w {DB_PASSWORD} -d {DB_NAME} --db-filter={DB_NAME} --dev=all --addons-path {addons_path} "
 
     if config.test:
