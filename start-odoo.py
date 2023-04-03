@@ -1,8 +1,28 @@
 #!/usr/bin/env python3
 
+""" Examples:
+
+    # start odoo server with new database
+    ./start-odoo.py -d
+
+    # start web test suite in command line
+    ./start-odoo.py --test-web
+
+    # start test suite in command line (will stop after)
+    ./start-odoo.py -t -- --test-tags .test_20_external_lib_assets
+
+    # list all currently checked-out branch (community/enterprise)
+    ./start-odoo.py -l
+
+    # drop testdb, then start odoo server with enterprise addons, and give -i crm to server
+    ./start-odoo.py -d --enterprise -- -i crm
+
+"""
+
 import subprocess
 import sys
 import argparse
+from argparse import RawTextHelpFormatter
 
 DB_NAME = "testdb"
 DB_USER = "odoo"
@@ -142,11 +162,17 @@ def show_status():
 # dropdb command
 # ------------------------------------------------------------------------------
 
+
 def drop_test_db():
     try:
         run_command(["dropdb", DB_NAME])
     except:
-        print(color("warning: failed to drop test db (db probably does not exist", "yellow"))
+        print(
+            color(
+                "warning: failed to drop test db (db probably does not exist", "yellow"
+            )
+        )
+
 
 # ------------------------------------------------------------------------------
 # Start odoo server
@@ -174,7 +200,11 @@ def parse_args():
             odoo_args = args[i + 1 :]
             args = args[:i]
 
-    parser = argparse.ArgumentParser(description="GED odoo commander script")
+    parser = argparse.ArgumentParser(
+        description="GED odoo commander script",
+        epilog=__doc__,
+        formatter_class=RawTextHelpFormatter,
+    )
     parser.add_argument(
         "-e", "--enterprise", help="activate enterprise addons", action="store_true"
     )
@@ -187,7 +217,10 @@ def parse_args():
         "-l", "--list-branches", help="list all git branches", action="store_true"
     )
     parser.add_argument(
-        "-w", "--test-web", help="run web test suite (implies --test)", action="store_true"
+        "-w",
+        "--test-web",
+        help="run web test suite (implies --test)",
+        action="store_true",
     )
     parser.add_argument("-p", "--additional-path", help="additional addon path")
     parser.add_argument(
@@ -251,7 +284,8 @@ def main():
     # start odoo server
     addons_path = "addons,../enterprise" if config.enterprise else "addons"
     if config.additional_path:
-        addons_path = addons_path + ',' + config.additional_path
+        addons_path = addons_path + "," + config.additional_path
+
     base_args = f" -r {DB_USER} -w {DB_PASSWORD} -d {DB_NAME} --db-filter={DB_NAME} --dev=all --addons-path {addons_path} "
 
     if config.test:
