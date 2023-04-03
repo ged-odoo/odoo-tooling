@@ -7,7 +7,7 @@ import argparse
 DB_NAME = "testdb"
 DB_USER = "odoo"
 DB_PASSWORD = "odoo"
-ODOO_BIN_CMD = "source env15/bin/activate;cd community;./odoo-bin"
+ODOO_BIN_CMD = "source env17/bin/activate;cd community;./odoo-bin"
 
 # ------------------------------------------------------------------------------
 # Misc Helpers
@@ -252,7 +252,7 @@ def main():
     addons_path = "addons,../enterprise" if config.enterprise else "addons"
     if config.additional_path:
         addons_path = addons_path + ',' + config.additional_path
-    base_args = f"-r {DB_USER} -w {DB_PASSWORD} -d {DB_NAME} --db-filter={DB_NAME} --dev=all --addons-path {addons_path} "
+    base_args = f" -r {DB_USER} -w {DB_PASSWORD} -d {DB_NAME} --db-filter={DB_NAME} --dev=all --addons-path {addons_path} "
 
     if config.test:
         test_args = " --test-enable --stop-after-init "
